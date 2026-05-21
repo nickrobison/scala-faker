@@ -10,9 +10,13 @@ object YamlRegistry {
   private val classLoader = classOf[YamlRegistry.type].getClassLoader
 
   def getProvider(name: String, locale: String): Option[Map[String, Any]] = {
-    localeCandidates(locale).iterator
-      .flatMap(loc => cache.get(s"$loc/$name").orElse { loadAndCache(name, loc) })
-      .collectFirst { case data => data }
+    val candidates = localeCandidates(locale).distinct
+    val merged = candidates.reverse.flatMap { loc =>
+      cache.get(s"$loc/$name").orElse { loadAndCache(name, loc) }
+    }.foldLeft(Map.empty[String, Any]) { (acc, data) =>
+      acc ++ data
+    }
+    if (merged.nonEmpty) Some(merged) else None
   }
 
   def getField(provider: String, field: String, locale: String): Option[Any] =

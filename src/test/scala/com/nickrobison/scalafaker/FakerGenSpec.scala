@@ -22,6 +22,9 @@ object FakerGenSpec {
       "address.building_number" -> testPattern("address.building_number"),
       "address.postcode" -> testPattern("address.postcode"),
       "address.secondary_address" -> testPattern("address.secondary_address"),
+      "address.full_address" -> testFullAddress,
+      "address.zip_code" -> testPattern("address.zip_code"),
+      "address.full_address (fr)" -> testFrenchAddress,
       "book.title" -> testSimple("book.title"),
       "book.author" -> testSimple("book.author"),
       "company.name" -> testSimple("company.name"),
@@ -81,6 +84,25 @@ object FakerGenSpec {
     val noHashLeft = values.forall(v => !v.contains('#') && !v.contains('?'))
     println(s"  samples: ${values.take(5).mkString(", ")}")
     noHashLeft
+  }
+
+  private def testFullAddress: Boolean = {
+    val gen = FakerGen.of("address.full_address")
+    val values = sample(gen)
+    val allNonEmpty = values.forall(_.nonEmpty)
+    val hasComma = values.exists(_.contains(","))
+    println(s"  samples: ${values.take(5).mkString(", ")}")
+    allNonEmpty && hasComma
+  }
+
+  private def testFrenchAddress: Boolean = {
+    implicit val ctx: FakerContext = FakerContext(Locale.FRANCE)
+    val gen = FakerGen.of("address.full_address")
+    val values = sample(gen)
+    val allNonEmpty = values.forall(_.nonEmpty)
+    val hasDigit = values.exists(_.exists(_.isDigit))
+    println(s"  samples: ${values.take(5).mkString(", ")}")
+    allNonEmpty && hasDigit
   }
 
   private def testSyntax: Boolean = {

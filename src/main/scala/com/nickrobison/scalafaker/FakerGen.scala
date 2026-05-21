@@ -145,6 +145,8 @@ object FakerGen {
             buildGen("name", "female_first_name")
           )
         )
+      case ("address", "zip_code" | "zip") =>
+        Some(buildGen("address", "postcode"))
       case _ => None
     }
   }
