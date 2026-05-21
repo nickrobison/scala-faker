@@ -4,8 +4,7 @@ import java.util.Locale
 
 /** Controls locale and future generation parameters.
   *
-  * An implicit `FakerContext` is required by [[FakerGen.of]] and
-  * `syntax.asGen`. The companion provides a default using
+  * An implicit `FakerContext` is required by [[FakerGen.of]] and `syntax.asGen`. The companion provides a default using
   * `Locale.getDefault()`.
   *
   * @param locale
