@@ -11,3 +11,11 @@ lazy val root = (project in file("."))
       "org.yaml" % "snakeyaml" % "2.6"
     )
   )
+
+lazy val docs = project
+  .in(file("doc-project"))
+  .settings(
+    mdocVariables := Map("VERSION" -> version.value)
+  )
+  .dependsOn(root)
+  .enablePlugins(MdocPlugin)

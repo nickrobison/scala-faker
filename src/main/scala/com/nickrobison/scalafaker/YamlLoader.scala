@@ -5,22 +5,33 @@ import scala.jdk.CollectionConverters._
 import scala.collection.concurrent.TrieMap
 import scala.util.Using
 
-class YamlRegistry private (locale: String) {
-  import YamlRegistry._
-
+object YamlRegistry {
   private val cache = TrieMap.empty[String, Map[String, Any]]
+  private val classLoader = classOf[YamlRegistry.type].getClassLoader
 
-  def getProvider(name: String): Option[Map[String, Any]] = {
-    cache.get(name) match {
-      case s @ Some(_) => s
-      case None => loadAndCache(name)
+  def getProvider(name: String, locale: String): Option[Map[String, Any]] = {
+    localeCandidates(locale).iterator
+      .flatMap(loc => cache.get(s"$loc/$name").orElse { loadAndCache(name, loc) })
+      .collectFirst { case data => data }
+  }
+
+  def getField(provider: String, field: String, locale: String): Option[Any] =
+    getProvider(provider, locale).flatMap(_.get(field))
+
+  private def localeCandidates(locale: String): Seq[String] = {
+    val base = locale.split("-").head
+    if (locale == "en") Seq("en")
+    else Seq(locale, base, "en")
+  }
+
+  private def loadAndCache(name: String, locale: String): Option[Map[String, Any]] = {
+    loadFromDir(name, locale).orElse(loadFromFile(name, locale)).map { data =>
+      cache.put(s"$locale/$name", data)
+      data
     }
   }
 
-  def getField(provider: String, field: String): Option[Any] =
-    getProvider(provider).flatMap(_.get(field))
-
-  private def loadAndCache(name: String): Option[Map[String, Any]] = {
+  private def loadFromDir(name: String, locale: String): Option[Map[String, Any]] = {
     val stream = classLoader.getResourceAsStream(s"$locale/$name.yml")
     if (stream == null) None
     else {
@@ -28,10 +39,7 @@ class YamlRegistry private (locale: String) {
         try {
           val yaml = new Yaml()
           val raw = yaml.load[java.util.Map[String, Any]](s)
-          extractProvider(raw, name).map { data =>
-            cache.put(name, data)
-            data
-          }
+          extractProvider(raw, locale, name)
         } catch {
           case _: Exception => None
         }
@@ -39,7 +47,23 @@ class YamlRegistry private (locale: String) {
     }
   }
 
-  private def extractProvider(raw: Any, name: String): Option[Map[String, Any]] = {
+  private def loadFromFile(name: String, locale: String): Option[Map[String, Any]] = {
+    val stream = classLoader.getResourceAsStream(s"$locale.yml")
+    if (stream == null) None
+    else {
+      Using.resource(stream) { s =>
+        try {
+          val yaml = new Yaml()
+          val raw = yaml.load[java.util.Map[String, Any]](s)
+          extractProvider(raw, locale, name)
+        } catch {
+          case _: Exception => None
+        }
+      }
+    }
+  }
+
+  private def extractProvider(raw: Any, locale: String, name: String): Option[Map[String, Any]] = {
     try {
       val root = raw.asInstanceOf[java.util.Map[String, Any]].asScala
       val localeData = root(locale).asInstanceOf[java.util.Map[String, Any]].asScala
@@ -51,14 +75,4 @@ class YamlRegistry private (locale: String) {
       case _: Exception => None
     }
   }
-}
-
-object YamlRegistry {
-  private val instances = TrieMap.empty[String, YamlRegistry]
-  private val classLoader = classOf[YamlRegistry].getClassLoader
-
-  def apply(): YamlRegistry = apply("en")
-
-  def apply(locale: String): YamlRegistry =
-    instances.getOrElseUpdate(locale, new YamlRegistry(locale))
 }

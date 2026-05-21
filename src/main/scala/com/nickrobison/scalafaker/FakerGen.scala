@@ -4,10 +4,21 @@ import org.scalacheck.Gen
 import scala.jdk.CollectionConverters._
 
 object FakerGen {
-  private val registry = YamlRegistry()
+  private val registry = YamlRegistry
   private val camelToSnakeCache = scala.collection.concurrent.TrieMap.empty[String, String]
 
-  def of(path: String): Gen[String] = {
+  /** Create a ScalaCheck `Gen[String]` from a datafaker YAML path.
+    *
+    * The path is a dot-separated provider and field, e.g.
+    * `"name.male_first_name"`. Composite fields like `"name.first_name"`
+    * merge data from multiple YAML keys.
+    *
+    * @param path
+    *   dot-separated provider name and field name
+    * @param ctx
+    *   implicit generation context that determines locale
+    */
+  def of(path: String)(implicit ctx: FakerContext): Gen[String] = {
     val dot = path.indexOf('.')
     if (dot == -1) {
       throw new IllegalArgumentException(
@@ -19,9 +30,9 @@ object FakerGen {
     buildGen(provider, field)
   }
 
-  private def buildGen(provider: String, field: String): Gen[String] = {
+  private def buildGen(provider: String, field: String)(implicit ctx: FakerContext): Gen[String] = {
     compositeGen(provider, field).getOrElse {
-      registry.getField(provider, field) match {
+      registry.getField(provider, field, ctx.language) match {
         case Some(list: java.util.List[_]) =>
           val strings = list.asScala.toSeq.map(_.toString)
           genFromValues(provider, strings)
@@ -38,13 +49,13 @@ object FakerGen {
     }
   }
 
-  private def genFromValues(provider: String, values: Seq[String]): Gen[String] = {
+  private def genFromValues(provider: String, values: Seq[String])(implicit ctx: FakerContext): Gen[String] = {
     if (values.isEmpty) Gen.const("")
     else if (values.size == 1) resolveExpression(provider, values.head)
     else Gen.oneOf(values).flatMap(v => resolveExpression(provider, v))
   }
 
-  private def resolveExpression(provider: String, s: String): Gen[String] = {
+  private def resolveExpression(provider: String, s: String)(implicit ctx: FakerContext): Gen[String] = {
     if (!s.contains("#{")) {
       patternify(s)
     } else {
@@ -94,7 +105,7 @@ object FakerGen {
     result.result()
   }
 
-  private def resolveReference(provider: String, expr: String): Gen[String] = {
+  private def resolveReference(provider: String, expr: String)(implicit ctx: FakerContext): Gen[String] = {
     val dot = expr.indexOf('.')
     if (dot == -1) {
       buildGen(provider, expr)
@@ -125,7 +136,7 @@ object FakerGen {
     }
   }
 
-  private def compositeGen(provider: String, field: String): Option[Gen[String]] = {
+  private def compositeGen(provider: String, field: String)(implicit ctx: FakerContext): Option[Gen[String]] = {
     (provider, field) match {
       case ("name", "first_name") =>
         Some(

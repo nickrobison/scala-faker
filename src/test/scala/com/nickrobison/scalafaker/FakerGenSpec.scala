@@ -1,5 +1,6 @@
 package com.nickrobison.scalafaker
 
+import java.util.Locale
 import org.scalacheck.{Gen, Prop, Test}
 import org.scalacheck.Prop._
 
@@ -29,7 +30,10 @@ object FakerGenSpec {
       "lorem.words" -> testSimple("lorem.words"),
       "movie.name" -> testSimple("movie.name"),
       "syntax extension" -> testSyntax,
-      "determinism" -> testDeterminism
+      "determinism" -> testDeterminism,
+      "german locale" -> testGerman,
+      "fallback to english" -> testFallbackToEnglish,
+      "explicit context" -> testExplicitContext
     )
 
     results.foreach { case (name, result) =>
@@ -97,5 +101,32 @@ object FakerGenSpec {
     println(s"  seed=12345: ${s2.take(3).mkString(", ")}")
     println(s"  seed=99999: ${s3.take(3).mkString(", ")}")
     s1 == s2 && s1 != s3
+  }
+
+  private def testGerman: Boolean = {
+    implicit val ctx: FakerContext = FakerContext(Locale.GERMANY)
+    val gen = FakerGen.of("name.prefix")
+    val values = sample(gen)
+    val hasGermanPrefix = values.exists(v => v == "Hr." || v == "Fr." || v == "Dipl.-Ing.")
+    println(s"  samples: ${values.distinct.take(8).mkString(", ")}")
+    hasGermanPrefix
+  }
+
+  private def testFallbackToEnglish: Boolean = {
+    implicit val ctx: FakerContext = FakerContext(Locale.GERMANY)
+    val gen = FakerGen.of("movie.name")
+    val values = sample(gen)
+    val allNonEmpty = values.forall(_.nonEmpty)
+    println(s"  samples: ${values.take(5).mkString(", ")}")
+    allNonEmpty
+  }
+
+  private def testExplicitContext: Boolean = {
+    val ctx = FakerContext(Locale.GERMANY)
+    val gen = FakerGen.of("name.prefix")(ctx)
+    val values = sample(gen)
+    val hasGermanPrefix = values.exists(v => v == "Hr." || v == "Fr.")
+    println(s"  samples: ${values.distinct.take(8).mkString(", ")}")
+    hasGermanPrefix
   }
 }
