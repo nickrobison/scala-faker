@@ -35,4 +35,4 @@ jobs:
           cache: sbt
       - uses: sbt/setup-sbt@v1
       - name: Run tests (cross-build)
-        run: sbt "+run"
+        run: sbt "+Test/run"

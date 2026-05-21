@@ -11,11 +11,13 @@ object YamlRegistry {
 
   def getProvider(name: String, locale: String): Option[Map[String, Any]] = {
     val candidates = localeCandidates(locale).distinct
-    val merged = candidates.reverse.flatMap { loc =>
-      cache.get(s"$loc/$name").orElse { loadAndCache(name, loc) }
-    }.foldLeft(Map.empty[String, Any]) { (acc, data) =>
-      acc ++ data
-    }
+    val merged = candidates.reverse
+      .flatMap { loc =>
+        cache.get(s"$loc/$name").orElse { loadAndCache(name, loc) }
+      }
+      .foldLeft(Map.empty[String, Any]) { (acc, data) =>
+        acc ++ data
+      }
     if (merged.nonEmpty) Some(merged) else None
   }
 

@@ -9,9 +9,8 @@ object FakerGen {
 
   /** Create a ScalaCheck `Gen[String]` from a datafaker YAML path.
     *
-    * The path is a dot-separated provider and field, e.g.
-    * `"name.male_first_name"`. Composite fields like `"name.first_name"`
-    * merge data from multiple YAML keys.
+    * The path is a dot-separated provider and field, e.g. `"name.male_first_name"`. Composite fields like
+    * `"name.first_name"` merge data from multiple YAML keys.
     *
     * @param path
     *   dot-separated provider name and field name
